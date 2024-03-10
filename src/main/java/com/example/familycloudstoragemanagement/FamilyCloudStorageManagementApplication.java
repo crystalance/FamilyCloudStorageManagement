@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 
 @MapperScan("com.example.familycloudstoragemanagement.UserManagement.dataAccess.mapper")
+@MapperScan("com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers")
 @EnableWebSecurity
 @NacosPropertySource(dataId = "example", autoRefreshed = true)
 @SpringBootApplication(exclude = {SecurityAutoConfiguration.class }) //避开springboot的安全检查 //

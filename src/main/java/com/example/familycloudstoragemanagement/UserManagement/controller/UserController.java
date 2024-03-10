@@ -53,7 +53,7 @@ public class UserController {
     //http://localhost:8081/user/SendCode?email=lancewaker@gmail.com
     @RequestMapping("SendCode")
     @ResponseBody
-    public String sendCode(String email) {
+    public SaResult sendCode(String email) {
         String message;
 //        try {
         message = "";
@@ -61,14 +61,16 @@ public class UserController {
         if (emailsender.isEmail(email)) {
             emailsender.sendEmail(email);
             message = "邮箱验证码已发送，有效时间为5分钟";
+            return SaResult.ok(message);
         } else {
             message = "邮箱格式不正确";
+            return SaResult.error(message);
         }
 //        } catch (Exception e) {
 //            //log.info(String.valueOf(e));
 //            message = "出现未知错误";
 //        }
-        return message;
+
     }
 
 
@@ -113,11 +115,11 @@ public class UserController {
 
     //http://localhost:8081/user/emailRegister?username=emtest1&password=emtest1&usernickname=lala&userphonenumber=123456789&email=lancewaker@gmail.com&verifyCode=
     @RequestMapping("emailRegister")
-    public String emailRegister(String username, String password, String usernickname, String userphonenumber, String email, String verifyCode) {
+    public SaResult emailRegister(String username, String password, String usernickname, String userphonenumber, String email, String verifyCode) {
 
         //先查询email是否存在
         if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(email))) {
-            return "邮箱号不存在或者验证码已过期！";
+            return SaResult.error("邮箱号不存在或者验证码已过期！");
         }
 
         //查询value,比较
@@ -126,36 +128,44 @@ public class UserController {
 
         if (Objects.equals(TrueCode, verifyCode)) {
 
-            return doRegister(username, password, usernickname, userphonenumber, email, null, null, null) + "邮箱号：" + email;
+            return SaResult.ok(doRegister(username, password, usernickname, userphonenumber, email, null, null, null) + ", 邮箱号：" + email);
 
         } else {
-            return "验证码错误";
+            return SaResult.error("验证码错误");
         }
 
     }
 
 
-    // 测试登录，浏览器访问： http://localhost:8081/user/doLogin?username=zhang&password=123456
+    // 测试登录，浏览器访问： http://localhost:8081/user/Login?username=zhang&password=123456
     //http://localhost:8081/user/doLogin?username=emtest1&password=emtest1
-    @RequestMapping("doLogin")
-    public SaResult doLogin(String username, String password) {
+    @RequestMapping("Login")
+    public SaResult doLogin(String email, String password) {
 
-        // 向数据库中查取用户名，这里要捕获查取失败的异常
-        QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>();
-        userQueryWrapper.select().eq("username", username);
-        User usr = userMapper.selectOne(userQueryWrapper);
-        String TruePassWord = usr.getUserpassword();
-        Long usrId = usr.getUserid();
+        String error_msg;
+        // 向数据库中查取用户名，这里要捕获查取失败的异
+        try {
+            QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>();
+            userQueryWrapper.select().eq("UserEmailAddr", email);
+            User usr = userMapper.selectOne(userQueryWrapper);
+            String TruePassWord = usr.getUserpassword();
+            Long usrId = usr.getUserid();
+            String username = usr.getUsername();
 
-        if (bCryptPasswordEncoder.matches(password, TruePassWord)) {
-            // SaSession session = StpUtil.getSession();
-            //session.set("user",usr);
-            StpUtil.login(usrId);
-            return SaResult.ok("登录成功，用户名：" + username);
+            if (bCryptPasswordEncoder.matches(password, TruePassWord)) {
+                // SaSession session = StpUtil.getSession();
+                //session.set("user",usr);9
+                StpUtil.login(usrId);
+
+                return SaResult.data(StpUtil.getTokenValue());
+            }else{
+                return SaResult.error("密码错误");
+            }
+        } catch (Exception e){
+           error_msg = "邮箱未注册" +e;
         }
 
-        return SaResult.error("登录失败");
-
+        return SaResult.error(error_msg);
     }
 
     // 查询登录状态，浏览器访问： http://localhost:8081/user/isLogin
@@ -163,6 +173,25 @@ public class UserController {
     public SaResult isLogin() {
         return SaResult.ok("当前会话是否登录：" + StpUtil.isLogin());
     }
+
+    @RequestMapping("checkuserlogininfo")
+    public SaResult checkuserlogininfo() {
+        if(StpUtil.isLogin()){
+            try {
+                Long userId = StpUtil.getLoginIdAsLong();
+                String id = userId.toString();
+                QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>();
+                userQueryWrapper.select().eq("userId", id);
+                User usr = userMapper.selectOne(userQueryWrapper);
+                return SaResult.data(usr);
+            } catch (Exception e){
+                SaResult.error("没找到id");
+            }
+
+        }
+        return SaResult.error();
+    }
+
 
     //退出登录
     //  http://localhost:8081/user/logout
