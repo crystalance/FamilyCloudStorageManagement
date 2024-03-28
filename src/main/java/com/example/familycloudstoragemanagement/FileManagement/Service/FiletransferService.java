@@ -1,5 +1,6 @@
 package com.example.familycloudstoragemanagement.FileManagement.Service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -11,6 +12,8 @@ import com.example.familycloudstoragemanagement.FileManagement.DTO.UploadFileDTO
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.*;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFiletransferService;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.*;
+import com.example.familycloudstoragemanagement.FileManagement.Utils.DateUtil;
+import com.example.familycloudstoragemanagement.FileManagement.VO.file.UploadFileVo;
 import com.example.familycloudstoragemanagement.FileManagement.io.QiwenFile;
 import com.qiwenshare.ufop.constant.StorageTypeEnum;
 import com.qiwenshare.ufop.constant.UploadFileStatusEnum;
@@ -38,7 +41,9 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -73,70 +78,71 @@ public class FiletransferService implements IFiletransferService {
 //    PictureFileMapper pictureFileMapper;
     public static Executor exec = Executors.newFixedThreadPool(20);
 
-//    @Override
-//    public UploadFileVo uploadFileSpeed(UploadFileDTO uploadFileDTO) {
-//        UploadFileVo uploadFileVo = new UploadFileVo();
-//        Map<String, Object> param = new HashMap<>();
-//        param.put("identifier", uploadFileDTO.getIdentifier());
-//        List<FileBean> list = fileMapper.selectByMap(param);
-//
-//        String filePath = uploadFileDTO.getFilePath();
-//        String relativePath = uploadFileDTO.getRelativePath();
-//        QiwenFile qiwenFile = null;
-//        if (relativePath.contains("/")) {
-//            qiwenFile = new QiwenFile(filePath, relativePath, false);
-//        } else {
-//            qiwenFile = new QiwenFile(filePath, uploadFileDTO.getFilename(), false);
-//        }
-//
-//        if (list != null && !list.isEmpty()) {
-//            FileBean file = list.get(0);
-//            UserFile userFile = new UserFile(qiwenFile, SessionUtil.getUserId(), file.getFileId());
-//
-//            try {
-//                userFileMapper.insert(userFile);
-//                fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
-//            } catch (Exception e) {
-//                log.warn("极速上传文件冲突重命名处理: {}", JSON.toJSONString(userFile));
-//
-//            }
-//
-//            if (relativePath.contains("/")) {
-//                QiwenFile finalQiwenFile = qiwenFile;
-//                exec.execute(()->{
-//                    fileDealComp.restoreParentFilePath(finalQiwenFile, SessionUtil.getUserId());
-//                });
-//
-//            }
-//
-//            uploadFileVo.setSkipUpload(true);
-//        } else {
-//            uploadFileVo.setSkipUpload(false);
-//
-//            List<Integer> uploaded = uploadTaskDetailMapper.selectUploadedChunkNumList(uploadFileDTO.getIdentifier());
-//            if (uploaded != null && !uploaded.isEmpty()) {
-//                uploadFileVo.setUploaded(uploaded);
-//            } else {
-//
-//                LambdaQueryWrapper<UploadTask> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-//                lambdaQueryWrapper.eq(UploadTask::getIdentifier, uploadFileDTO.getIdentifier());
-//                List<UploadTask> rslist = uploadTaskMapper.selectList(lambdaQueryWrapper);
-//                if (rslist == null || rslist.isEmpty()) {
-//                    UploadTask uploadTask = new UploadTask();
-//                    uploadTask.setIdentifier(uploadFileDTO.getIdentifier());
-//                    uploadTask.setUploadTime(DateUtil.getCurrentTime());
-//                    uploadTask.setUploadStatus(UploadFileStatusEnum.UNCOMPLATE.getCode());
-//                    uploadTask.setFileName(qiwenFile.getNameNotExtend());
-//                    uploadTask.setFilePath(qiwenFile.getParent());
-//                    uploadTask.setExtendName(qiwenFile.getExtendName());
-//                    uploadTask.setUserId(SessionUtil.getUserId());
-//                    uploadTaskMapper.insert(uploadTask);
-//                }
-//            }
-//
-//        }
-//        return uploadFileVo;
-//    }
+    @Override
+    public UploadFileVo uploadFileSpeed(UploadFileDTO uploadFileDTO) {
+        UploadFileVo uploadFileVo = new UploadFileVo();
+        Map<String, Object> param = new HashMap<>();
+        param.put("identifier", uploadFileDTO.getIdentifier());
+        List<FileBean> list = fileMapper.selectByMap(param);
+
+        String filePath = uploadFileDTO.getFilePath();
+        String relativePath = uploadFileDTO.getRelativePath();
+        QiwenFile qiwenFile = null;
+        if (relativePath.contains("/")) {
+            qiwenFile = new QiwenFile(filePath, relativePath, false);
+        } else {
+            qiwenFile = new QiwenFile(filePath, uploadFileDTO.getFilename(), false);
+        }
+
+        if (list != null && !list.isEmpty()) {
+            FileBean file = list.get(0);
+            UserFile userFile = new UserFile(qiwenFile, StpUtil.getLoginIdAsLong(), file.getFileId());
+
+            try {
+                userFileMapper.insert(userFile);
+                log.info("数据已写入数据库中");
+                fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
+            } catch (Exception e) {
+                log.warn("极速上传文件冲突重命名处理: {}", JSON.toJSONString(userFile));
+
+            }
+
+            if (relativePath.contains("/")) {
+                QiwenFile finalQiwenFile = qiwenFile;
+                exec.execute(()->{
+                    fileDealComp.restoreParentFilePath(finalQiwenFile, StpUtil.getLoginIdAsLong());
+                });
+
+            }
+
+            uploadFileVo.setSkipUpload(true);
+        } else {
+            uploadFileVo.setSkipUpload(false);
+
+            List<Integer> uploaded = uploadTaskDetailMapper.selectUploadedChunkNumList(uploadFileDTO.getIdentifier());
+            if (uploaded != null && !uploaded.isEmpty()) {
+                uploadFileVo.setUploaded(uploaded);
+            } else {
+
+                LambdaQueryWrapper<UploadTask> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+                lambdaQueryWrapper.eq(UploadTask::getIdentifier, uploadFileDTO.getIdentifier());
+                List<UploadTask> rslist = uploadTaskMapper.selectList(lambdaQueryWrapper);
+                if (rslist == null || rslist.isEmpty()) {
+                    UploadTask uploadTask = new UploadTask();
+                    uploadTask.setIdentifier(uploadFileDTO.getIdentifier());
+                    uploadTask.setUploadTime(DateUtil.getCurrentTime());
+                    uploadTask.setUploadStatus(UploadFileStatusEnum.UNCOMPLATE.getCode());
+                    uploadTask.setFileName(qiwenFile.getNameNotExtend());
+                    uploadTask.setFilePath(qiwenFile.getParent());
+                    uploadTask.setExtendName(qiwenFile.getExtendName());
+                    uploadTask.setUserId(StpUtil.getLoginIdAsLong());
+                    uploadTaskMapper.insert(uploadTask);
+                }
+            }
+
+        }
+        return uploadFileVo;
+    }
 
     @Override
     public void uploadFile(HttpServletRequest request, UploadFileDTO uploadFileDto, Long userId) {
@@ -186,7 +192,9 @@ public class FiletransferService implements IFiletransferService {
 
                 try {
                     userFileMapper.insert(userFile);
+                    log.info("数据已写入数据库中");
                     fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
+
                 } catch (Exception e) {
                     UserFile userFile1 = userFileMapper.selectOne(new QueryWrapper<UserFile>().lambda()
                             .eq(UserFile::getUserId, userFile.getUserId())
@@ -201,7 +209,9 @@ public class FiletransferService implements IFiletransferService {
                         String fileName = fileDealComp.getRepeatFileName(userFile, userFile.getFilePath());
                         userFile.setFileName(fileName);
                         userFileMapper.insert(userFile);
+                        log.info("数据已写入数据库中");
                         fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
+
                     }
                 }
 
@@ -239,7 +249,8 @@ public class FiletransferService implements IFiletransferService {
 
                // fileDealComp.parseMusicFile(uploadFileResult.getExtendName(), uploadFileResult.getStorageType().getCode(), uploadFileResult.getFileUrl(), fileBean.getFileId());
 
-            } else if (UploadFileStatusEnum.UNCOMPLATE.equals(uploadFileResult.getStatus())) {
+            }
+            else if (UploadFileStatusEnum.UNCOMPLATE.equals(uploadFileResult.getStatus())) {
                 UploadTaskDetail uploadTaskDetail = new UploadTaskDetail();
                 uploadTaskDetail.setFilePath(qiwenFile.getParent());
                 uploadTaskDetail.setFilename(qiwenFile.getNameNotExtend());
@@ -251,7 +262,8 @@ public class FiletransferService implements IFiletransferService {
                 uploadTaskDetail.setIdentifier(uploadFileDto.getIdentifier());
                 uploadTaskDetailMapper.insert(uploadTaskDetail);
 
-            } else if (UploadFileStatusEnum.FAIL.equals(uploadFileResult.getStatus())) {
+            }
+            else if (UploadFileStatusEnum.FAIL.equals(uploadFileResult.getStatus())) {
                 LambdaQueryWrapper<UploadTaskDetail> lambdaQueryWrapper = new LambdaQueryWrapper<>();
                 lambdaQueryWrapper.eq(UploadTaskDetail::getIdentifier, uploadFileDto.getIdentifier());
                 uploadTaskDetailMapper.delete(lambdaQueryWrapper);

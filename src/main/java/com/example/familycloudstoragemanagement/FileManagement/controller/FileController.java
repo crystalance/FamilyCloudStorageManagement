@@ -7,23 +7,31 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.HighlighterEncoder;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.familycloudstoragemanagement.FileManagement.Component.AsyncTaskComp;
 import com.example.familycloudstoragemanagement.FileManagement.Component.FileDealComp;
 import com.example.familycloudstoragemanagement.FileManagement.DTO.CreateFileDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.CreateFoldDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.DeleteFileDTO;
 import com.example.familycloudstoragemanagement.FileManagement.DTO.SearchFileDTO;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.UserFile;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.FileBean;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFileService;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IUserFileService;
+import com.example.familycloudstoragemanagement.FileManagement.Utils.QiwenFileUtil;
+import com.example.familycloudstoragemanagement.FileManagement.VO.file.FileListVO;
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.SearchFileVO;
 import com.example.familycloudstoragemanagement.FileManagement.config.es.FileSearch;
 import com.qiwenshare.common.anno.MyLog;
 import com.qiwenshare.common.result.RestResult;
 import com.qiwenshare.common.util.DateUtil;
+import com.qiwenshare.common.util.security.JwtUser;
+import com.qiwenshare.common.util.security.SessionUtil;
 import com.qiwenshare.ufop.factory.UFOPFactory;
 import com.qiwenshare.ufop.operation.copy.Copier;
 import com.qiwenshare.ufop.operation.copy.domain.CopyFile;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,18 +195,70 @@ public class FileController {
         }
 
         List<SearchFileVO> searchFileVOList = new ArrayList<>();
-        for (Hit<FileSearch> hit : search.hits().hits()) {
+        for (Hit<FileSearch> hit : search.hits().hits()) { //hit是查询后的结果，即一个链表的fileSearch
             SearchFileVO searchFileVO = new SearchFileVO();
             BeanUtil.copyProperties(hit.source(), searchFileVO);
             searchFileVO.setHighLight(hit.highlight());
             searchFileVOList.add(searchFileVO);
-            asyncTaskComp.checkESUserFileId(searchFileVO.getUserFileId());
+            asyncTaskComp.checkESUserFileId(searchFileVO.getUserFileId()); //查询到的文件是否已经被删除，若是，则在es中删除当前文件
         }
         return RestResult.success().dataList(searchFileVOList, searchFileVOList.size());
     }
 
+    @Operation(summary = "创建文件夹", description = "目录(文件夹)的创建", tags = {"file"})
+    @RequestMapping(value = "/createFold", method = RequestMethod.POST)
+    @MyLog(operation = "创建文件夹", module = CURRENT_MODULE)
+    @ResponseBody
+    public RestResult<String> createFold(@Valid @RequestBody CreateFoldDTO createFoldDto) {
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        String filePath = createFoldDto.getFilePath();
 
 
+        boolean isDirExist = fileDealComp.isDirExist(createFoldDto.getFileName(), createFoldDto.getFilePath(), userId);
+
+        if (isDirExist) {
+            return RestResult.fail().message("同名文件夹已存在");
+        }
+
+        UserFile userFile = QiwenFileUtil.getQiwenDir(userId, filePath, createFoldDto.getFileName());
+
+        userFileService.save(userFile);
+        fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
+        return RestResult.success();
+    }
+
+
+    @Operation(summary = "获取文件列表", description = "用来做前台列表展示", tags = {"file"})
+    @RequestMapping(value = "/getfilelist", method = RequestMethod.GET)
+    @ResponseBody
+    public RestResult<FileListVO> getFileList(
+            @Parameter(description = "文件类型", required = true) String fileType,
+            @Parameter(description = "文件路径", required = true) String filePath,
+            @Parameter(description = "当前页", required = true) long currentPage,
+            @Parameter(description = "页面数量", required = true) long pageCount){
+        if ("0".equals(fileType)) {
+            IPage<FileListVO> fileList = userFileService.userFileList(null, filePath, currentPage, pageCount);
+            return RestResult.success().dataList(fileList.getRecords(), fileList.getTotal());
+        } else {
+            IPage<FileListVO> fileList = userFileService.getFileByFileType(Integer.valueOf(fileType), currentPage, pageCount,StpUtil.getLoginIdAsLong());
+            return RestResult.success().dataList(fileList.getRecords(), fileList.getTotal());
+        }
+    }
+
+
+    @Operation(summary = "删除文件", description = "可以删除文件或者目录", tags = {"file"})
+    @RequestMapping(value = "/deletefile", method = RequestMethod.POST)
+    @MyLog(operation = "删除文件", module = CURRENT_MODULE)
+    @ResponseBody
+    public RestResult deleteFile(@RequestBody DeleteFileDTO deleteFileDto) {
+
+        userFileService.deleteUserFile(deleteFileDto.getUserFileId(), StpUtil.getLoginIdAsLong());
+        fileDealComp.deleteESByUserFileId(deleteFileDto.getUserFileId());
+
+        return RestResult.success();
+
+    }
 
 
 

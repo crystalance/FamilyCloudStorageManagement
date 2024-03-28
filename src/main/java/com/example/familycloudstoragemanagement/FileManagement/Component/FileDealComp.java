@@ -1,8 +1,11 @@
 package com.example.familycloudstoragemanagement.FileManagement.Component;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.nacos.api.utils.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.FileBean;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.UserFile;
@@ -258,13 +261,19 @@ public class FileDealComp {
 
 
     public void uploadESByUserFileId(String userFileId) {
-        exec.execute(()->{
+       // exec.execute(()->{
             try {
-
+                log.info("userfileid: "+ userFileId );
                 Map<String, Object> param = new HashMap<>();
                 param.put("userFileId", userFileId);
+
                 List<UserFile> userfileResult = userFileMapper.selectByMap(param);
-                if (userfileResult != null && userfileResult.size() > 0) {
+
+
+
+                log.info("更新到这, size:"+ userfileResult.size() );
+                if (!userfileResult.isEmpty()) {
+                   // log.info("es更新完毕");
                     FileSearch fileSearch = new FileSearch();
                     BeanUtil.copyProperties(userfileResult.get(0), fileSearch);
                 /*if (fileSearch.getIsDir() == 0) {
@@ -279,11 +288,13 @@ public class FileDealComp {
                 }*/
                     // 写入数据到filesearch索引中， 写入id为getUserFileId， 文档为fileSearch
                     elasticsearchClient.index(i -> i.index("filesearch").id(fileSearch.getUserFileId()).document(fileSearch));
+                    //log.info("es更新完毕-2");
                 }
+               // log.info("更新到这-2");
             } catch (Exception e) {
                 log.debug("ES更新操作失败，请检查配置");
             }
-        });
+        //});
 
 
     }
@@ -307,34 +318,34 @@ public class FileDealComp {
      *
      * @return
      */
-//    public boolean checkAuthDownloadAndPreview(String shareBatchNum,
-//                                               String extractionCode,
-//                                               String token,
-//                                               String userFileIds,
-//                                               Integer platform) {
-//        log.debug("权限检查开始：shareBatchNum:{}, extractionCode:{}, token:{}, userFileIds{}", shareBatchNum, extractionCode, token, userFileIds);
-//        if (platform != null && platform == 2) {
-//            return true;
-//        }
-//        String[] userFileIdArr = userFileIds.split(",");
-//        for (String userFileId : userFileIdArr) {
-//
-//            UserFile userFile = userFileMapper.selectById(userFileId);
-//            log.debug(JSON.toJSONString(userFile));
-//            if ("undefined".equals(shareBatchNum) || StringUtils.isEmpty(shareBatchNum)) {
-//
-//                String userId = userService.getUserIdByToken(token);
-//                log.debug(JSON.toJSONString("当前登录session用户id：" + userId));
-//                if (userId == null) {
-//                    return false;
-//                }
-//                log.debug("文件所属用户id：" + userFile.getUserId());
-//                log.debug("登录用户id:" + userId);
-//                if (!userFile.getUserId().equals(userId)) {
-//                    log.info("用户id不一致，权限校验失败");
-//                    return false;
-//                }
-//            } else {
+    public boolean checkAuthDownloadAndPreview(String shareBatchNum,
+                                               String extractionCode,
+                                               Long userId,
+                                               String userFileIds,
+                                               Integer platform) {
+        log.info("权限检查开始：shareBatchNum:{}, extractionCode:{}, userId:{}, userFileIds:{}", shareBatchNum, extractionCode, userId, userFileIds);
+        if (platform != null && platform == 2) {
+            return true;
+        }
+        String[] userFileIdArr = userFileIds.split(",");
+        for (String userFileId : userFileIdArr) {
+
+            UserFile userFile = userFileMapper.selectById(userFileId);
+            log.debug(JSON.toJSONString(userFile));
+            if ("undefined".equals(shareBatchNum) || StringUtils.isEmpty(shareBatchNum)) {
+
+                log.debug(JSON.toJSONString("当前登录session用户id：" + userId));
+                if (userId == null) {
+                    return false;
+                }
+                log.info("文件所属用户id：" + userFile.getUserId());
+                log.info("登录用户id:" + userId);
+                if (!userFile.getUserId().equals(userId)) {
+                    log.info("用户id不一致，权限校验失败");
+                    return false;
+                }
+            }
+            //else {
 //                Map<String, Object> param = new HashMap<>();
 //                param.put("shareBatchNum", shareBatchNum);
 //                List<Share> shareList = shareService.listByMap(param);
@@ -359,10 +370,10 @@ public class FileDealComp {
 //                }
 //
 //            }
-//
-//        }
-//        return true;
-//    }
+
+        }
+        return true;
+    }
 
     /**
      * 拷贝文件
@@ -410,7 +421,7 @@ public class FileDealComp {
         writer1.write(inputStream, writeFile);
     }
 
-    public boolean isDirExist(String fileName, String filePath, String userId) {
+    public boolean isDirExist(String fileName, String filePath, Long userId) {
         LambdaQueryWrapper<UserFile> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(UserFile::getFileName, fileName)
                 .eq(UserFile::getFilePath, QiwenFile.formatPath(filePath))

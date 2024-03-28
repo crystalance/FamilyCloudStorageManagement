@@ -29,9 +29,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Future;
 
+/**
+ * 异步任务业务类
+ */
 @Slf4j
 @Component
-@Async("asyncTaskExecutor")
+@Async("asyncTaskExecutor") //异步方法注解
 public class AsyncTaskComp {
 
 //    @Resource
