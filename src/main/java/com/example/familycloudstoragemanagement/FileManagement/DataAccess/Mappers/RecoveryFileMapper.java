@@ -8,6 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 public interface RecoveryFileMapper extends BaseMapper<RecoveryFile> {
-    List<RecoveryFileListVo> selectRecoveryFileList(@Param("userId") String userId);
+    List<RecoveryFileListVo> selectRecoveryFileList(@Param("userId") Long userId);
 }
 

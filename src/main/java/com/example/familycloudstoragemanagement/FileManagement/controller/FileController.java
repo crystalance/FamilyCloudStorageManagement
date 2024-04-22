@@ -16,6 +16,7 @@ import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFileService;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IUserFileService;
 import com.example.familycloudstoragemanagement.FileManagement.Utils.QiwenFileUtil;
+import com.example.familycloudstoragemanagement.FileManagement.Utils.TreeNode;
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.FileListVO;
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.SearchFileVO;
 import com.example.familycloudstoragemanagement.FileManagement.config.es.FileSearch;
@@ -43,9 +44,7 @@ import javax.validation.Valid;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -282,6 +281,53 @@ public class FileController {
 
         fileDealComp.deleteRepeatSubDirFile(newfilePath, userId);
         return RestResult.success();
+
+    }
+
+    //
+    @Operation(summary = "获取文件树", description = "文件移动的时候需要用到该接口，用来展示目录树", tags = {"file"})
+    @RequestMapping(value = "/getfiletree", method = RequestMethod.GET)
+    @ResponseBody
+    public RestResult<TreeNode> getFileTree() {
+        RestResult<TreeNode> result = new RestResult<TreeNode>();
+        List<UserFile> userFileList = userFileService.selectFilePathTreeByUserId(StpUtil.getLoginIdAsLong());
+        TreeNode resultTreeNode = new TreeNode();
+        resultTreeNode.setLabel(QiwenFile.separator);
+        resultTreeNode.setId(0L);
+        long id = 1;
+        // 根据返回的文件夹列表以及其文件路径生成文件树
+        for (int i = 0; i < userFileList.size(); i++){
+            UserFile userFile = userFileList.get(i);
+            QiwenFile qiwenFile = new QiwenFile(userFile.getFilePath(), userFile.getFileName(), false);
+            //根据文件夹的路径以及该文件夹的名称生成当前路径
+            String filePath = qiwenFile.getPath();
+
+            Queue<String> queue = new LinkedList<>();
+
+            String[] strArr = filePath.split(QiwenFile.separator);
+            for (int j = 0; j < strArr.length; j++){
+                if (!"".equals(strArr[j]) && strArr[j] != null){
+                    queue.add(strArr[j]);
+                }
+
+            }
+            if (queue.size() == 0){
+                continue;
+            }
+
+            resultTreeNode = fileDealComp.insertTreeNode(resultTreeNode, id++, QiwenFile.separator, queue);
+
+
+        }
+        List<TreeNode> treeNodeList = resultTreeNode.getChildren();
+        Collections.sort(treeNodeList, (o1, o2) -> {
+            long i = o1.getId() - o2.getId();
+            return (int) i;
+        });
+        result.setSuccess(true);
+        result.setData(resultTreeNode);
+
+        return result;
 
     }
 

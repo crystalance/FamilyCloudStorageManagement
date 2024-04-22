@@ -1,6 +1,17 @@
 package com.example.familycloudstoragemanagement.FileManagement.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.familycloudstoragemanagement.FileManagement.Component.AsyncTaskComp;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.recoveryfile.BatchDeleteRecoveryFileDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.recoveryfile.DeleteRecoveryFileDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.recoveryfile.RestoreFileDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.RecoveryFile;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFileService;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFiletransferService;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IRecoveryFileService;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IUserFileService;
+import com.example.familycloudstoragemanagement.FileManagement.VO.file.RecoveryFileListVo;
 import com.qiwenshare.common.anno.MyLog;
 import com.qiwenshare.common.result.RestResult;
 import com.qiwenshare.common.util.security.JwtUser;
@@ -13,77 +24,75 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
-//@Tag(name = "recoveryfile", description = "文件删除后会进入回收站，该接口主要是对回收站文件进行管理")
-//@RestController
-//@Slf4j
-//@RequestMapping("/recoveryfile")
-//public class RecoveryFileController {
-//    @Resource
-//    IRecoveryFileService recoveryFileService;
-//    @Resource
-//    IUserFileService userFileService;
-//    @Resource
-//    IUserService userService;
-//    @Resource
-//    IFileService fileService;
-//    @Resource
-//    IFiletransferService filetransferService;
-//    @Resource
-//    AsyncTaskComp asyncTaskComp;
-//
-//
-//    public static final String CURRENT_MODULE = "回收站文件接口";
-//
-//    @Operation(summary = "删除回收文件", description = "删除回收文件", tags = {"recoveryfile"})
-//    @MyLog(operation = "删除回收文件", module = CURRENT_MODULE)
-//    @RequestMapping(value = "/deleterecoveryfile", method = RequestMethod.POST)
-//    @ResponseBody
-//    public RestResult<String> deleteRecoveryFile(@RequestBody DeleteRecoveryFileDTO deleteRecoveryFileDTO) {
-//        RecoveryFile recoveryFile = recoveryFileService.getOne(new QueryWrapper<RecoveryFile>().lambda().eq(RecoveryFile::getUserFileId, deleteRecoveryFileDTO.getUserFileId()));
-//
-//        asyncTaskComp.deleteUserFile(recoveryFile.getUserFileId());
-//
-//        recoveryFileService.removeById(recoveryFile.getRecoveryFileId());
-//        return RestResult.success().data("删除成功");
-//    }
-//
-//    @Operation(summary = "批量删除回收文件", description = "批量删除回收文件", tags = {"recoveryfile"})
-//    @RequestMapping(value = "/batchdelete", method = RequestMethod.POST)
-//    @MyLog(operation = "批量删除回收文件", module = CURRENT_MODULE)
-//    @ResponseBody
-//    public RestResult<String> batchDeleteRecoveryFile(@RequestBody BatchDeleteRecoveryFileDTO batchDeleteRecoveryFileDTO) {
-//        String userFileIds = batchDeleteRecoveryFileDTO.getUserFileIds();
-//        String[] userFileIdList = userFileIds.split(",");
-//        for (String userFileId : userFileIdList) {
-//            RecoveryFile recoveryFile = recoveryFileService.getOne(new QueryWrapper<RecoveryFile>().lambda().eq(RecoveryFile::getUserFileId, userFileId));
-//
-//            if (recoveryFile != null) {
-//                asyncTaskComp.deleteUserFile(recoveryFile.getUserFileId());
-//
-//                recoveryFileService.removeById(recoveryFile.getRecoveryFileId());
-//            }
-//
-//        }
-//        return RestResult.success().data("批量删除成功");
-//    }
-//
-//    @Operation(summary = "回收文件列表", description = "回收文件列表", tags = {"recoveryfile"})
-//    @RequestMapping(value = "/list", method = RequestMethod.GET)
-//    @ResponseBody
-//    public RestResult<RecoveryFileListVo> getRecoveryFileList() {
-//        JwtUser sessionUserBean = SessionUtil.getSession();
-//        List<RecoveryFileListVo> recoveryFileList = recoveryFileService.selectRecoveryFileList(sessionUserBean.getUserId());
-//        return RestResult.success().dataList(recoveryFileList, recoveryFileList.size());
-//    }
-//
-//    @Operation(summary = "还原文件", description = "还原文件", tags = {"recoveryfile"})
-//    @RequestMapping(value = "/restorefile", method = RequestMethod.POST)
-//    @MyLog(operation = "还原文件", module = CURRENT_MODULE)
-//    @ResponseBody
-//    public RestResult restoreFile(@RequestBody RestoreFileDTO restoreFileDto) {
-//        JwtUser sessionUserBean = SessionUtil.getSession();
-//        recoveryFileService.restorefile(restoreFileDto.getDeleteBatchNum(), restoreFileDto.getFilePath(), sessionUserBean.getUserId());
-//        return RestResult.success().message("还原成功！");
-//    }
-//
-//}
+@Tag(name = "recoveryfile", description = "文件删除后会进入回收站，该接口主要是对回收站文件进行管理")
+@RestController
+@Slf4j
+@RequestMapping("/recoveryfile")
+public class RecoveryFileController {
+    @Resource
+    IRecoveryFileService recoveryFileService;
+    @Resource
+    IUserFileService userFileService;
+    @Resource
+    IFileService fileService;
+    @Resource
+    IFiletransferService filetransferService;
+    @Resource
+    AsyncTaskComp asyncTaskComp;
+
+
+    public static final String CURRENT_MODULE = "回收站文件接口";
+
+    @Operation(summary = "删除回收文件", description = "删除回收文件", tags = {"recoveryfile"})
+    @MyLog(operation = "删除回收文件", module = CURRENT_MODULE)
+    @RequestMapping(value = "/deleterecoveryfile", method = RequestMethod.POST)
+    @ResponseBody
+    public RestResult<String> deleteRecoveryFile(@RequestBody DeleteRecoveryFileDTO deleteRecoveryFileDTO) {
+        RecoveryFile recoveryFile = recoveryFileService.getOne(new QueryWrapper<RecoveryFile>().lambda().eq(RecoveryFile::getUserFileId, deleteRecoveryFileDTO.getUserFileId()));
+
+        asyncTaskComp.deleteUserFile(recoveryFile.getUserFileId());
+
+        recoveryFileService.removeById(recoveryFile.getRecoveryFileId());
+        return RestResult.success().data("删除成功");
+    }
+
+    @Operation(summary = "批量删除回收文件", description = "批量删除回收文件", tags = {"recoveryfile"})
+    @RequestMapping(value = "/batchdelete", method = RequestMethod.POST)
+    @MyLog(operation = "批量删除回收文件", module = CURRENT_MODULE)
+    @ResponseBody
+    public RestResult<String> batchDeleteRecoveryFile(@RequestBody BatchDeleteRecoveryFileDTO batchDeleteRecoveryFileDTO) {
+        String userFileIds = batchDeleteRecoveryFileDTO.getUserFileIds();
+        String[] userFileIdList = userFileIds.split(",");
+        for (String userFileId : userFileIdList) {
+            RecoveryFile recoveryFile = recoveryFileService.getOne(new QueryWrapper<RecoveryFile>().lambda().eq(RecoveryFile::getUserFileId, userFileId));
+
+            if (recoveryFile != null) {
+                asyncTaskComp.deleteUserFile(recoveryFile.getUserFileId());
+
+                recoveryFileService.removeById(recoveryFile.getRecoveryFileId());
+            }
+
+        }
+        return RestResult.success().data("批量删除成功");
+    }
+
+    @Operation(summary = "回收文件列表", description = "回收文件列表", tags = {"recoveryfile"})
+    @RequestMapping(value = "/list", method = RequestMethod.GET)
+    @ResponseBody
+    public RestResult<RecoveryFileListVo> getRecoveryFileList() {
+        //JwtUser sessionUserBean = SessionUtil.getSession();
+        List<RecoveryFileListVo> recoveryFileList = recoveryFileService.selectRecoveryFileList(StpUtil.getLoginIdAsLong());
+        return RestResult.success().dataList(recoveryFileList, recoveryFileList.size());
+    }
+
+    @Operation(summary = "还原文件", description = "还原文件", tags = {"recoveryfile"})
+    @RequestMapping(value = "/restorefile", method = RequestMethod.POST)
+    @MyLog(operation = "还原文件", module = CURRENT_MODULE)
+    @ResponseBody
+    public RestResult restoreFile(@RequestBody RestoreFileDTO restoreFileDto) {
+        //JwtUser sessionUserBean = SessionUtil.getSession();
+        recoveryFileService.restorefile(restoreFileDto.getDeleteBatchNum(), restoreFileDto.getFilePath(), StpUtil.getLoginIdAsLong());
+        return RestResult.success().message("还原成功！");
+    }
+
+}

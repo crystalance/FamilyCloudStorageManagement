@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.FileBean;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.UserFile;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFiletransferService;
+import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IRecoveryFileService;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FileMapper;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.UserFileMapper;
 import com.example.familycloudstoragemanagement.FileManagement.io.QiwenFile;
@@ -37,10 +39,10 @@ import java.util.concurrent.Future;
 @Async("asyncTaskExecutor") //异步方法注解
 public class AsyncTaskComp {
 
-//    @Resource
-//    IRecoveryFileService recoveryFileService;
-//    @Resource
-//    IFiletransferService filetransferService;
+    @Resource
+    IRecoveryFileService recoveryFileService;
+    @Resource
+    IFiletransferService filetransferService;
     @Resource
     UFOPFactory ufopFactory;
     @Resource
@@ -59,49 +61,49 @@ public class AsyncTaskComp {
         return userFileMapper.selectCount(lambdaQueryWrapper);
     }
 
-//    public Future<String> deleteUserFile(String userFileId) {
-//        UserFile userFile = userFileMapper.selectById(userFileId);
-//        if (userFile.getIsDir() == 1) {
-//            LambdaQueryWrapper<UserFile> userFileLambdaQueryWrapper = new LambdaQueryWrapper<>();
-//            userFileLambdaQueryWrapper.eq(UserFile::getDeleteBatchNum, userFile.getDeleteBatchNum());
-//            List<UserFile> list = userFileMapper.selectList(userFileLambdaQueryWrapper);
-//            recoveryFileService.deleteUserFileByDeleteBatchNum(userFile.getDeleteBatchNum());
-//            for (UserFile userFileItem : list) {
-//
-//                Long filePointCount = getFilePointCount(userFileItem.getFileId());
-//
-//                if (filePointCount != null && filePointCount == 0 && userFileItem.getIsDir() == 0) {
-//                    FileBean fileBean = fileMapper.selectById(userFileItem.getFileId());
-//                    if (fileBean != null) {
-//                        try {
-//                            filetransferService.deleteFile(fileBean);
-//                            fileMapper.deleteById(fileBean.getFileId());
-//                        } catch (Exception e) {
-//                            log.error("删除本地文件失败：" + JSON.toJSONString(fileBean));
-//                        }
-//                    }
-//
-//
-//                }
-//            }
-//        } else {
-//
-//            recoveryFileService.deleteUserFileByDeleteBatchNum(userFile.getDeleteBatchNum());
-//            Long filePointCount = getFilePointCount(userFile.getFileId());
-//
-//            if (filePointCount != null && filePointCount == 0 && userFile.getIsDir() == 0) {
-//                FileBean fileBean = fileMapper.selectById(userFile.getFileId());
-//                try {
-//                    filetransferService.deleteFile(fileBean);
-//                    fileMapper.deleteById(fileBean.getFileId());
-//                } catch (Exception e) {
-//                    log.error("删除本地文件失败：" + JSON.toJSONString(fileBean));
-//                }
-//            }
-//        }
-//
-//        return new AsyncResult<>("deleteUserFile");
-//    }
+    public Future<String> deleteUserFile(String userFileId) {
+        UserFile userFile = userFileMapper.selectById(userFileId);
+        if (userFile.getIsDir() == 1) {
+            LambdaQueryWrapper<UserFile> userFileLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            userFileLambdaQueryWrapper.eq(UserFile::getDeleteBatchNum, userFile.getDeleteBatchNum());
+            List<UserFile> list = userFileMapper.selectList(userFileLambdaQueryWrapper);
+            recoveryFileService.deleteUserFileByDeleteBatchNum(userFile.getDeleteBatchNum());
+            for (UserFile userFileItem : list) {
+
+                Long filePointCount = getFilePointCount(userFileItem.getFileId());
+
+                if (filePointCount != null && filePointCount == 0 && userFileItem.getIsDir() == 0) {
+                    FileBean fileBean = fileMapper.selectById(userFileItem.getFileId());
+                    if (fileBean != null) {
+                        try {
+                            filetransferService.deleteFile(fileBean);
+                            fileMapper.deleteById(fileBean.getFileId());
+                        } catch (Exception e) {
+                            log.error("删除本地文件失败：" + JSON.toJSONString(fileBean));
+                        }
+                    }
+
+
+                }
+            }
+        } else {
+
+            recoveryFileService.deleteUserFileByDeleteBatchNum(userFile.getDeleteBatchNum());
+            Long filePointCount = getFilePointCount(userFile.getFileId());
+
+            if (filePointCount != null && filePointCount == 0 && userFile.getIsDir() == 0) {
+                FileBean fileBean = fileMapper.selectById(userFile.getFileId());
+                try {
+                    filetransferService.deleteFile(fileBean);
+                    fileMapper.deleteById(fileBean.getFileId());
+                } catch (Exception e) {
+                    log.error("删除本地文件失败：" + JSON.toJSONString(fileBean));
+                }
+            }
+        }
+
+        return new AsyncResult<>("deleteUserFile");
+    }
 
     public Future<String> checkESUserFileId(String userFileId) {
         UserFile userFile = userFileMapper.selectById(userFileId);
