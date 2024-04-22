@@ -191,8 +191,7 @@ public class FiletransferService implements IFiletransferService {
 
 
                 try {
-                    userFileMapper.insert(userFile);
-                    log.info("数据已写入数据库中");
+                    userFileMapper.insert(userFile); //同名文件已经存在
                     fileDealComp.uploadESByUserFileId(userFile.getUserFileId());
 
                 } catch (Exception e) {

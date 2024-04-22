@@ -10,10 +10,7 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.familycloudstoragemanagement.FileManagement.Component.AsyncTaskComp;
 import com.example.familycloudstoragemanagement.FileManagement.Component.FileDealComp;
-import com.example.familycloudstoragemanagement.FileManagement.DTO.CreateFileDTO;
-import com.example.familycloudstoragemanagement.FileManagement.DTO.CreateFoldDTO;
-import com.example.familycloudstoragemanagement.FileManagement.DTO.DeleteFileDTO;
-import com.example.familycloudstoragemanagement.FileManagement.DTO.SearchFileDTO;
+import com.example.familycloudstoragemanagement.FileManagement.DTO.*;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.UserFile;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.FileBean;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.IServices.IFileService;
@@ -22,6 +19,7 @@ import com.example.familycloudstoragemanagement.FileManagement.Utils.QiwenFileUt
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.FileListVO;
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.SearchFileVO;
 import com.example.familycloudstoragemanagement.FileManagement.config.es.FileSearch;
+import com.example.familycloudstoragemanagement.FileManagement.io.QiwenFile;
 import com.qiwenshare.common.anno.MyLog;
 import com.qiwenshare.common.result.RestResult;
 import com.qiwenshare.common.util.DateUtil;
@@ -34,6 +32,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.ClassUtils;
@@ -256,6 +255,32 @@ public class FileController {
         userFileService.deleteUserFile(deleteFileDto.getUserFileId(), StpUtil.getLoginIdAsLong());
         fileDealComp.deleteESByUserFileId(deleteFileDto.getUserFileId());
 
+        return RestResult.success();
+
+    }
+
+    @Operation(summary = "文件移动", description = "可以移动文件或者目录", tags = {"file"})
+    @RequestMapping(value = "/movefile", method = RequestMethod.POST)
+    @MyLog(operation = "文件移动", module = CURRENT_MODULE)
+    @ResponseBody
+    public RestResult<String> moveFile(@RequestBody MoveFileDTO moveFileDto) {
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        UserFile userFile = userFileService.getById(moveFileDto.getUserFileId());
+        String oldfilePath = userFile.getFilePath();
+        String newfilePath = moveFileDto.getFilePath();
+        String fileName = userFile.getFileName();
+        String extendName = userFile.getExtendName();
+        if (StringUtil.isEmpty(extendName)) {
+            QiwenFile qiwenFile = new QiwenFile(oldfilePath, fileName, true);
+            if (newfilePath.startsWith(qiwenFile.getPath() + QiwenFile.separator) || newfilePath.equals(qiwenFile.getPath())) {
+                return RestResult.fail().message("原路径与目标路径冲突，不能移动");
+            }
+        }
+
+        userFileService.updateFilepathByUserFileId(moveFileDto.getUserFileId(), newfilePath, userId);
+
+        fileDealComp.deleteRepeatSubDirFile(newfilePath, userId);
         return RestResult.success();
 
     }

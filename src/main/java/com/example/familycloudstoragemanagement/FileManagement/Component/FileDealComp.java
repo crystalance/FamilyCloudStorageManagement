@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -156,7 +157,7 @@ public class FileDealComp {
      * @param filePath
      * @param sessionUserId
      */
-    public void deleteRepeatSubDirFile(String filePath, String sessionUserId) {
+    public void deleteRepeatSubDirFile(String filePath, Long sessionUserId) {
         log.debug("删除子目录：" + filePath);
         LambdaQueryWrapper<UserFile> lambdaQueryWrapper = new LambdaQueryWrapper<>();
 
@@ -260,8 +261,9 @@ public class FileDealComp {
     }
 
 
+    @Async
     public void uploadESByUserFileId(String userFileId) {
-       // exec.execute(()->{
+        //exec.execute(()->{
             try {
                 log.info("userfileid: "+ userFileId );
                 Map<String, Object> param = new HashMap<>();

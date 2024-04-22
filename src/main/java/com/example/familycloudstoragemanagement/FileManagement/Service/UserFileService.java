@@ -187,6 +187,11 @@ public class UserFileService extends ServiceImpl<UserFileMapper, UserFile> imple
         return userFileMapper.selectList(lambdaQueryWrapper);
     }
 
+    /**
+     * 选出用户系统中所有的文件夹
+     * @param userId
+     * @return
+     */
     @Override
     public List<UserFile> selectFilePathTreeByUserId(Long userId) {
         LambdaQueryWrapper<UserFile> lambdaQueryWrapper = new LambdaQueryWrapper<>();
