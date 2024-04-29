@@ -72,7 +72,6 @@ public class UserFileService extends ServiceImpl<UserFileMapper, UserFile> imple
     public IPage<FileListVO> userFileList(Long userId, String filePath, Long currentPage, Long pageCount) {
         Page<FileListVO> page = new Page<>(currentPage, pageCount);
         UserFile userFile = new UserFile();
-        JwtUser sessionUserBean = SessionUtil.getSession();
         if (userId == null) {
             userFile.setUserId(StpUtil.getLoginIdAsLong());
         } else {

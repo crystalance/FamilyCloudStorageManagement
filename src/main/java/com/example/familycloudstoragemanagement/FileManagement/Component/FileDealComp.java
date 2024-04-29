@@ -7,6 +7,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.nacos.api.utils.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.FileBean;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.UserFile;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FileMapper;
@@ -16,6 +17,8 @@ import com.example.familycloudstoragemanagement.FileManagement.Utils.QiwenFileUt
 import com.example.familycloudstoragemanagement.FileManagement.Utils.TreeNode;
 import com.example.familycloudstoragemanagement.FileManagement.config.es.FileSearch;
 import com.example.familycloudstoragemanagement.FileManagement.io.QiwenFile;
+import com.example.familycloudstoragemanagement.UserManagement.dataAccess.mapper.UserMapper;
+import com.example.familycloudstoragemanagement.UserManagement.dataAccess.pojo.User;
 import com.qiwenshare.common.util.DateUtil;
 import com.qiwenshare.common.util.security.SessionUtil;
 import com.qiwenshare.ufop.factory.UFOPFactory;
@@ -52,6 +55,9 @@ public class FileDealComp {
 //    private IShareService shareService;
 //    @Resource
 //    private IShareFileService shareFileService;
+    @Resource
+    private UserMapper userMapper;
+
     @Resource
     private UFOPFactory ufopFactory;
     @Resource
@@ -437,6 +443,11 @@ public class FileDealComp {
         return false;
     }
 
+    public boolean isFSSExist(Long userId){
+        LambdaQueryWrapper<User> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(User::getUserid,userId).isNotNull(User::getFamilysharespaceid);
+        return userMapper.selectCount(lambdaQueryWrapper) > 0;
+    }
 
 //    public void parseMusicFile(String extendName, int storageType, String fileUrl, String fileId) {
 //        File outFile = null;

@@ -15,4 +15,5 @@ public class User {
     private String Aliid;
     private String Giteeid;
     private String union_id;
+    private String familysharespaceid;
 }
