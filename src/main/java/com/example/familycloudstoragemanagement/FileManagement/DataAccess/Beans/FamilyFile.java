@@ -2,12 +2,15 @@ package com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 
+@Data
+@Table(name = "familyfile")
+@Entity
+@TableName("familyfile")
 public class FamilyFile {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
