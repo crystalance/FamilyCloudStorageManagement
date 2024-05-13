@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FamilyFilesMapper">
+    <select id="selectFSSFileList" resultType="com.example.familycloudstoragemanagement.FileManagement.VO.file.FSSFileListVO">
+    select * from familyfile a
+    left join userfile b on a.userFileId = b.userFileId
+    left join file c on c.fileId = b.fileId
+    where FSSId = #{FSSId}
+    </select>
+
+</mapper>

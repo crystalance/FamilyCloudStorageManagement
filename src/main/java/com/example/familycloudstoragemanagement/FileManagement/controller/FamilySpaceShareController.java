@@ -13,6 +13,8 @@ import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Beans.
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FamilyFilesMapper;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FamilyMembersMapper;
 import com.example.familycloudstoragemanagement.FileManagement.DataAccess.Mappers.FamilyShareSpaceMapper;
+import com.example.familycloudstoragemanagement.FileManagement.VO.file.FSSFileListVO;
+import com.example.familycloudstoragemanagement.FileManagement.VO.file.FamilyMemberListVO;
 import com.example.familycloudstoragemanagement.FileManagement.VO.file.RecoveryFileListVo;
 import com.example.familycloudstoragemanagement.UserManagement.dataAccess.mapper.UserMapper;
 import com.example.familycloudstoragemanagement.UserManagement.dataAccess.pojo.User;
@@ -169,6 +171,12 @@ public class FamilySpaceShareController {
             familyMember.setFSSId(fssid);
             familyMembersMapper.insert(familyMember);
 
+            LambdaUpdateWrapper<User> userLambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+            userLambdaUpdateWrapper.eq(User::getUserid,userid).set(User::getFamilysharespaceid,fssid);
+            userMapper.update(null,userLambdaUpdateWrapper);
+
+
+
             return RestResult.success().message("家庭成员："+email+"注册成功");
         } else {
             return RestResult.fail().message("验证码不正确！");
@@ -197,15 +205,42 @@ public class FamilySpaceShareController {
         return RestResult.success().message("上传成功");
     }
 
-//    @Operation(summary = "回收文件列表", description = "回收文件列表", tags = {"recoveryfile"})
-//    @RequestMapping(value = "/list", method = RequestMethod.GET)
-//    @ResponseBody
-//    public RestResult<RecoveryFileListVo> getFamilyFileList() {
+    @Operation(summary = "家庭共享文件列表", description = "家庭共享文件列表", tags = {"FSSfile"})
+    @RequestMapping(value = "/FSSFilelist", method = RequestMethod.GET)
+    @ResponseBody
+    public RestResult<FSSFileListVO> getFamilyFileList() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<User> userLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        userLambdaQueryWrapper.eq(User::getUserid,userId);
+        User user = userMapper.selectOne(userLambdaQueryWrapper);
+        if(user.getFamilysharespaceid()!=null) {
+            String FSSid = user.getFamilysharespaceid();
+            List<FSSFileListVO> fssFileListVO = familyFilesMapper.selectFSSFileList(FSSid);
+            return RestResult.success().dataList(fssFileListVO, fssFileListVO.size());
+        }
+        return RestResult.fail().message("请先绑定FSS！");
+
 //        List<RecoveryFileListVo> recoveryFileList = recoveryFileService.selectRecoveryFileList(StpUtil.getLoginIdAsLong());
 //        return RestResult.success().dataList(recoveryFileList, recoveryFileList.size());
-//    }
+    }
+
+    @Operation(summary = "家庭共享空间成员列表", description = "家庭共享文件列表", tags = {"recoveryfile"})
+    @RequestMapping(value = "/getFamilyMemberList", method = RequestMethod.GET)
+    @ResponseBody
+    public RestResult<FamilyMemberListVO> getFamilyMemberList() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<User> userLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        userLambdaQueryWrapper.eq(User::getUserid,userId);
+        User user = userMapper.selectOne(userLambdaQueryWrapper);
+        if(user.getFamilysharespaceid()!=null) {
+            String FSSid = user.getFamilysharespaceid();
+            List<FamilyMemberListVO> familyMemberListVO = familyMembersMapper.selectFamilyMemberList(FSSid);
+            return RestResult.success().dataList(familyMemberListVO, familyMemberListVO.size());
+        }
+        return RestResult.fail().message("请先绑定FSS！");
 
 
+    }
 
 
 
